@@ -1,0 +1,45 @@
+version: "3.8"
+services:
+  eureka-service:
+    container_name: eureka-service
+    image: alexpachecolaos/eureka-image
+    ports:
+      - "8761:8761"
+  gateway-service:
+    container_name: gateway-service
+    image: alexpachecolaos/gateway-image
+    environment:
+      - eureka.client.serviceUrl.defaultZone=http://eureka-service:8761/eureka/
+    ports:
+      - "8090:8090"
+    depends_on:
+      - eureka-service
+      - filterlocales-service
+  filterlocales-service:
+    container_name: filterlocales-service
+    image: alexpachecolaos/filterlocales-image
+    ports:
+      - "31231:8181"
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://eureka-service:8761/eureka/
+        - SPRING_DATASOURCE_URL=jdbc:postgresql://autosdatabase:5432/comunasdb
+        - SPRING_DATASOURCE_USERNAME=postgres
+        - SPRING_DATASOURCE_PASSWORD=password
+        - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+        - SERVER_PORT=8181
+    deploy:
+        restart_policy:
+          condition: on-failure
+    depends_on:
+      - eureka-service
+      - db-locales
+  db-locales:
+    image: 'postgres:latest'
+    container_name: autosdatabase
+    environment:
+      - POSTGRES_DB=comunasdb
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+    volumes:
+      - /var/lib/postgresql/data
+      - ./data/comunasdb.sql:/docker-entrypoint-initdb.d/comunasdb.sql
